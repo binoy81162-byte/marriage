@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html>
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JSFiddle ptdg8jmn</title>
+
+  <style>
+    
+  </style>
+
+  
+</head>
+<body>
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Photo Capture & Download</title>
+    
+    <!-- JSZip Library for creating ZIP files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+
+        /* Video Preview */
+        .video-container {
+            position: relative;
+            margin: 20px auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 480px;
+        }
+
+        #videoPreview {
+            width: 100%;
+            height: auto;
+            display: block;
+            background: #000;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            display: none;
+        }
+
+        .video-overlay.active {
+            display: block;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+
+        /* Hidden Canvas for capturing */
+        #photoCanvas {
+            display: none;
+        }
+
+        /* Capture Link/Button */
+        .capture-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .capture-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .capture-link:active {
+            transform: translateY(0);
+        }
+
+        .capture-link.disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Flash Effect */
+        .flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .flash.active {
+            animation: flashAnimation 0.3s ease-out;
+        }
+
+        @keyframes flashAnimation {
+            0% { opacity: 0.8; }
+            100% { opacity: 0; }
+        }
+
+        /* Captured Photos Gallery */
+        .gallery {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px dashed #eee;
+        }
+
+        .gallery h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .gallery-item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gallery-item .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Download Button */
+        .download-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-top: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 5px 20px rgba(17, 153, 142, 0.4);
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(17, 153, 142, 0.6);
+        }
+
+        .download-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Status Messages */
+        .status {
+            margin: 15px 0;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .status.error {
+            background: #ffe6e6;
+            color: #d63031;
+        }
+
+        .status.success {
+            background: #e6ffe6;
+            color: #00b894;
+        }
+
+        .status.info {
+            background: #e6f3ff;
+            color: #0984e3;
+        }
+
+        /* Counter */
+        .counter {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 10px;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Instructions */
+        .instructions {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #555;
+        }
+
+        .instructions li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Flash Effect Element -->
+    <div class="flash" id="flash"></div>
+
+    <div class="container">
+        <h1>📸 Auto Photo Capture</h1>
+        <p class="subtitle">Click the link to automatically capture your photo!</p>
+
+        <!-- Instructions -->
+        <div class="instructions">
+            <ol>
+                <li>Allow camera access when prompted</li>
+                <li>Click the <strong>"Click Here to Capture Photo"</strong> link</li>
+                <li>Your photo will be captured automatically</li>
+                <li>Download all photos as a ZIP file</li>
+            </ol>
+        </div>
+
+        <!-- Status Message -->
+        <div id="status" class="status info">Initializing camera...</div>
+
+        <!-- Video Preview -->
+        <div class="video-container">
+            <video id="videoPreview" autoplay playsinline></video>
+            <div class="video-overlay" id="liveIndicator">● LIVE</div>
+        </div>
+
+        <!-- Hidden Canvas for Photo Capture -->
+        <canvas id="photoCanvas"></canvas>
+
+        <!-- Main Capture Link -->
+        <a href="#" id="captureLink" class="capture-link disabled" onclick="capturePhoto(event)">
+            📷 Click Here to Capture Photo
+        </a>
+
+        <!-- Photo Counter -->
+        <div class="counter" id="counter">Photos captured: 0</div>
+
+        <!-- Gallery Section -->
+        <div class="gallery" id="gallery" style="display: none;">
+            <h3>📁 Captured Photos</h3>
+            <div class="gallery-grid" id="galleryGrid"></div>
+            
+            <!-- Download ZIP Button -->
+            <button class="download-btn" id="downloadBtn" onclick="downloadAsZip()" disabled>
+                ⬇️ Download All as ZIP
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // VARIABLES
+        // ============================================
+        let videoStream = null;
+        let capturedPhotos = [];
+        let photoCounter = 0;
+
+        // DOM Elements
+        const video = document.getElementById('videoPreview');
+        const canvas = document.getElementById('photoCanvas');
+        const ctx = canvas.getContext('2d');
+        const captureLink = document.getElementById('captureLink');
+        const status = document.getElementById('status');
+        const flash = document.getElementById('flash');
+        const liveIndicator = document.getElementById('liveIndicator');
+        const gallery = document.getElementById('gallery');
+        const galleryGrid = document.getElementById('galleryGrid');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const counter = document.getElementById('counter');
+
+        // ============================================
+        // INITIALIZE CAMERA
+        // ============================================
+        async function initCamera() {
+            try {
+                // Request camera access
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user' // Front camera for selfie
+                    },
+                    audio: false
+                });
+
+                // Set video source
+                video.srcObject = videoStream;
+                
+                // Wait for video to be ready
+                video.onloadedmetadata = () => {
+                    video.play();
+                    
+                    // Set canvas dimensions to match video
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    // Enable capture link
+                    captureLink.classList.remove('disabled');
+                    liveIndicator.classList.add('active');
+                    
+                    updateStatus('Camera ready! Click the link to capture photo.', 'success');
+                };
+
+            } catch (error) {
+                console.error('Camera Error:', error);
+                
+                if (error.name === 'NotAllowedError') {
+                    updateStatus('Camera access denied. Please allow camera permissions.', 'error');
+                } else if (error.name === 'NotFoundError') {
+                    updateStatus('No camera found on this device.', 'error');
+                } else {
+                    updateStatus('Error accessing camera: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // ============================================
+        // CAPTURE PHOTO FUNCTION
+        // ============================================
+        function capturePhoto(event) {
+            // Prevent default link behavior
+            if (event) {
+                event.preventDefault();
+            }
+
+            // Check if camera is ready
+            if (!videoStream || captureLink.classList.contains('disabled')) {
+                updateStatus('Camera not ready. Please wait...', 'error');
+                return;
+            }
+
+            // Trigger flash effect
+            triggerFlash();
+
+            // Draw current video frame to canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Get image data as base64
+            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+            // Create photo object
+            const photo = {
+                id: Date.now(),
+                data: imageData,
+                filename: `photo_${++photoCounter}_${formatDate()}.jpg`,
+                timestamp: new Date().toLocaleString()
+            };
+
+            // Add to captured photos array
+            capturedPhotos.push(photo);
+
+            // Update UI
+            addPhotoToGallery(photo);
+            updateCounter();
+            updateStatus(`Photo ${photoCounter} captured successfully!`, 'success');
+
+            // Enable download button
+            downloadBtn.disabled = false;
+
+            // Play capture sound (optional)
+            playShutterSound();
+        }
+
+        // ============================================
+        // FLASH EFFECT
+        // ============================================
+        function triggerFlash() {
+            flash.classList.add('active');
+            setTimeout(() => {
+                flash.classList.remove('active');
+            }, 300);
+        }
+
+        // ============================================
+        // SHUTTER SOUND (Optional)
+        // ============================================
+        function playShutterSound() {
+            // Create a simple click sound using Web Audio API
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 1000;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } catch (e) {
+                // Ignore audio errors
+            }
+        }
+
+        // ============================================
+        // ADD PHOTO TO GALLERY
+        // ============================================
+        function addPhotoToGallery(photo) {
+            gallery.style.display = 'block';
+
+            const item = document.createElement('div');
+            item.className = 'gallery-item';
+            item.id = `photo-${photo.id}`;
+            item.innerHTML = `
+                <img src="${photo.data}" alt="${photo.filename}" title="${photo.timestamp}">
+                <button class="delete-btn" onclick="deletePhoto(${photo.id})" title="Delete">×</button>
+            `;
+
+            galleryGrid.appendChild(item);
+        }
+
+        // ============================================
+        // DELETE PHOTO
+        // ============================================
+        function deletePhoto(photoId) {
+            // Remove from array
+            capturedPhotos = capturedPhotos.filter(p => p.id !== photoId);
+            
+            // Remove from DOM
+            const element = document.getElementById(`photo-${photoId}`);
+            if (element) {
+                element.remove();
+            }
+
+            // Update counter
+            updateCounter();
+
+            // Hide gallery and disable download if no photos
+            if (capturedPhotos.length === 0) {
+                gallery.style.display = 'none';
+                downloadBtn.disabled = true;
+            }
+
+            updateStatus('Photo deleted.', 'info');
+        }
+
+        // ============================================
+        // UPDATE COUNTER
+        // ============================================
+        function updateCounter() {
+            counter.textContent = `Photos captured: ${capturedPhotos.length}`;
+        }
+
+        // ============================================
+        // UPDATE STATUS MESSAGE
+        // ============================================
+        function updateStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        // ============================================
+        // FORMAT DATE FOR FILENAME
+        // ============================================
+        function formatDate() {
+            const now = new Date();
+            return now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        }
+
+        // ============================================
+        // DOWNLOAD AS ZIP FILE
+        // ============================================
+        async function downloadAsZip() {
+            if (capturedPhotos.length === 0) {
+                updateStatus('No photos to download!', 'error');
+                return;
+            }
+
+            // Show loading state
+            downloadBtn.innerHTML = '<span class="spinner"></span> Creating ZIP...';
+            downloadBtn.disabled = true;
+
+            try {
+                // Create new JSZip instance
+                const zip = new JSZip();
+
+                // Create a folder for photos
+                const imgFolder = zip.folder("captured_photos");
+
+                // Add each photo to the ZIP
+                for (const photo of capturedPhotos) {
+                    // Convert base64 to blob
+                    const base64Data = photo.data.split(',')[1];
+                    imgFolder.file(photo.filename, base64Data, { base64: true });
+                }
+
+                // Add a info.txt file with capture details
+                const infoContent = `Photo Capture Session
+========================
+Date: ${new Date().toLocaleString()}
+Total Photos: ${capturedPhotos.length}
+
+Photos:
+${capturedPhotos.map((p, i) => `${i + 1}. ${p.filename} - Captured at: ${p.timestamp}`).join('\n')}
+
+Generated by Auto Photo Capture Tool
+`;
+                zip.file("info.txt", infoContent);
+
+                // Generate ZIP file
+                const zipBlob = await zip.generateAsync({ 
+                    type: 'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: { level: 6 }
+                });
+
+                // Create download link
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(zipBlob);
+                downloadLink.download = `photos_${formatDate()}.zip`;
+                
+                // Trigger download
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+
+                // Clean up
+                URL.revokeObjectURL(downloadLink.href);
+
+                updateStatus(`ZIP file with ${capturedPhotos.length} photos downloaded successfully!`, 'success');
+
+            } catch (error) {
+                console.error('ZIP Error:', error);
+                updateStatus('Error creating ZIP file: ' + error.message, 'error');
+            }
+
+            // Reset button
+            downloadBtn.innerHTML = '⬇️ Download All as ZIP';
+            downloadBtn.disabled = false;
+        }
+
+        // ============================================
+        // KEYBOARD SHORTCUT (Space bar to capture)
+        // ============================================
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !e.repeat) {
+                e.preventDefault();
+                capturePhoto();
+            }
+        });
+
+        // ============================================
+        // INITIALIZE ON PAGE LOAD
+        // ============================================
+        window.addEventListener('load', initCamera);
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>
+
+  <script>
+    
+  </script>
+</body>
+</html>
